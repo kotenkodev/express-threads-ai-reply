@@ -1,0 +1,36 @@
+{
+  "name": "node-ai-social-reply-system",
+  "version": "1.0.0",
+  "description": "Multi-Product AI Social Listening & Auto-Reply Bot for Threads",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "threads",
+    "meta",
+    "social-listening",
+    "ai-agent",
+    "reply-bot"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "node-cron": "^4.6.0",
+    "openai": "^7.33.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
