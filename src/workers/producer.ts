@@ -29,6 +29,7 @@ export interface SourcingResult {
   skipped: number;
   ignored: number; // backward-compatibility alias for skipped
   duplicates: number;
+  warning?: string;
 }
 
 function extractShortcode(permalink?: string | null): string | undefined {
@@ -88,51 +89,61 @@ export async function runSourcingProducerCycle(
       continue;
     }
 
-    // Keyword rotation
-    const currentIndex = campaignKeywordIndices[campaign.id] ?? 0;
-    const keyword = campaign.keywords[currentIndex % campaign.keywords.length];
-    campaignKeywordIndices[campaign.id] = (currentIndex + 1) % campaign.keywords.length;
-    summary.keyword = keyword;
-
     // Resolve swappable provider (Scraper / Mock / Custom)
     const sourceProvider = getPostSourceProvider(campaign);
     summary.provider = sourceProvider.name;
 
-    console.log(
-      `[Producer Search] Provider: [${sourceProvider.name}] | Keyword: "${keyword}" (index ${currentIndex})`
-    );
-
-    let rawPosts;
-    try {
-      rawPosts = await sourceProvider.searchPosts({
-        keyword,
-        campaign,
-        searchType: campaign.searchType || "RECENT",
-        limit: campaign.inspectPerRun || 25,
-      });
-    } catch (err) {
-      console.error(
-        `[Producer Search Error] ${sourceProvider.name} failed for "${keyword}":`,
-        (err as Error).message
-      );
-      results.push(summary);
-      continue;
-    }
-
-    summary.postsFound = rawPosts.length;
-    recordSearchLog(campaign.id, keyword, rawPosts.length);
-    console.log(`[Producer Results] Found ${rawPosts.length} posts for "${keyword}"`);
-
     // Sourcing limits & candidate evaluation
-    const maxToInspect = campaign.inspectPerRun || 25;
-    const maxToDraft = campaign.draftsPerRun || 5;
+    const maxToInspect = campaign.inspectPerRun || 60;
+    const maxToDraft = campaign.draftsPerRun || 15;
 
-    for (const post of rawPosts) {
-      if (summary.evaluated >= maxToInspect || summary.pending >= maxToDraft) {
+    // Scan up to 3 keywords per run in rotation to gather a healthy batch of posts
+    const keywordsToScanCount = Math.min(campaign.keywords.length, 3);
+    const usedKeywords: string[] = [];
+
+    for (let k = 0; k < keywordsToScanCount; k++) {
+      if (summary.pending >= maxToDraft || summary.evaluated >= maxToInspect) {
         break;
       }
 
-      const shortcode = post.shortcode || extractShortcode(post.permalink);
+      const currentIndex = campaignKeywordIndices[campaign.id] ?? 0;
+      const keyword = campaign.keywords[currentIndex % campaign.keywords.length];
+      campaignKeywordIndices[campaign.id] = (currentIndex + 1) % campaign.keywords.length;
+      usedKeywords.push(keyword);
+
+      console.log(
+        `[Producer Search] Provider: [${sourceProvider.name}] | Keyword: "${keyword}" (index ${currentIndex})`
+      );
+
+      let rawPosts;
+      try {
+        rawPosts = await sourceProvider.searchPosts({
+          keyword,
+          campaign,
+          searchType: campaign.searchType || "RECENT",
+          limit: Math.max(25, Math.ceil(maxToInspect / keywordsToScanCount)),
+        });
+      } catch (err) {
+        console.error(
+          `[Producer Search Error] ${sourceProvider.name} failed for "${keyword}":`,
+          (err as Error).message
+        );
+        continue;
+      }
+
+      summary.postsFound += rawPosts.length;
+      if ((sourceProvider as any).lastError) {
+        summary.warning = (sourceProvider as any).lastError;
+      }
+      recordSearchLog(campaign.id, keyword, rawPosts.length);
+      console.log(`[Producer Results] Found ${rawPosts.length} posts for "${keyword}"`);
+
+      for (const post of rawPosts) {
+        if (summary.evaluated >= maxToInspect || summary.pending >= maxToDraft) {
+          break;
+        }
+
+        const shortcode = post.shortcode || extractShortcode(post.permalink);
 
       // Check 1: Deduplication by externalId (post.id) or shortcode
       if (isPostProcessed(post.id, shortcode)) {
@@ -297,8 +308,10 @@ export async function runSourcingProducerCycle(
           ai_reasoning: `AI evaluation error: ${(err as Error).message}`,
         });
       }
+      }
     }
 
+    summary.keyword = usedKeywords.join(", ");
     results.push(summary);
   }
 

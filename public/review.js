@@ -288,7 +288,14 @@ document.querySelector('#source').addEventListener('click', async event => {
     const count = Array.isArray(data.results)
       ? data.results.reduce((total, result) => total + (result.pending ?? result.queued ?? 0), 0)
       : (data.results?.sourcing?.reduce((total, result) => total + (result.pending ?? result.queued ?? 0), 0) ?? 0);
-    setMessage(`✅ Sourcing complete. ${count} new qualified drafts ready for review.`);
+    const warning = Array.isArray(data.results)
+      ? data.results.find(r => r.warning)?.warning
+      : data.results?.sourcing?.find(r => r.warning)?.warning;
+    if (warning) {
+      setMessage(`⚠️ ${warning} (Falling back to internal engine). Generated ${count} drafts.`);
+    } else {
+      setMessage(`✅ Sourcing complete. ${count} new qualified drafts ready for review.`);
+    }
     await load();
   } catch (error) {
     setMessage(error.message, true);

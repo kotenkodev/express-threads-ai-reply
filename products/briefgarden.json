@@ -22,8 +22,8 @@
     "intent": "People asking how to clarify client requirements or reduce repeated revision requests.",
     "freshnessMinutes": 720,
     "reviewThreshold": 85,
-    "inspectPerRun": 30,
-    "draftsPerRun": 4,
+    "inspectPerRun": 60,
+    "draftsPerRun": 20,
     "skipText": [
       "#ad",
       "sponsored",
