@@ -6,14 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "tunnel": "tsx scripts/tunnel.mjs",
-    "tunnel:ngrok": "tsx scripts/tunnel.mjs ngrok",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test:search": "tsx scripts/test-search.ts",
-    "test:db": "tsx scripts/test-db.ts",
-    "test:review": "npm run build && node scripts/test-review.mjs",
-    "test:config": "npm run build && node scripts/test-config.mjs"
+    "start": "node dist/index.js"
   },
   "keywords": [
     "threads",

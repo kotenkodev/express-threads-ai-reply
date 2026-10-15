@@ -3,7 +3,7 @@ import { join, basename } from "node:path";
 import type { CampaignConfig } from "../types/campaign.js";
 import { productSchema } from "./product-schema.js";
 
-export function parseProduct(value: unknown, source = "product"): CampaignConfig {
+function parseProduct(value: unknown, source = "product"): CampaignConfig {
   if (!value || typeof value !== "object") {
     throw new Error(`${source}: product configuration must be an object`);
   }
@@ -105,12 +105,12 @@ export function parseProduct(value: unknown, source = "product"): CampaignConfig
       temperature: p.generation.temperature,
     },
     account: {
-      threadsUserId: p.publishing.userId,
-      accessTokenEnvVar: p.publishing.credentialVariable,
-      dailyReplyLimit: p.publishing.dailyBudget,
-      activeHoursStart: p.publishing.window.fromHour,
-      activeHoursEnd: p.publishing.window.untilHour,
-      timeZone: p.publishing.window.timeZone,
+      threadsUserId: p.publishing?.userId || "me",
+      accessTokenEnvVar: p.publishing?.credentialVariable || "THREADS_ACCESS_TOKEN",
+      dailyReplyLimit: p.publishing?.dailyBudget ?? 20,
+      activeHoursStart: p.publishing?.window?.fromHour ?? 9,
+      activeHoursEnd: p.publishing?.window?.untilHour ?? 22,
+      timeZone: p.publishing?.window?.timeZone || "Europe/Kyiv",
       minDelaySeconds: 0,
       maxDelaySeconds: 0,
     },

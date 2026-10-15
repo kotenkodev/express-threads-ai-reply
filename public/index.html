@@ -17,16 +17,108 @@
       </div>
       <div class="toolbar">
         <button id="refresh">Refresh</button>
+        <button id="btn-products" class="secondary">⚙️ Products &amp; Keywords</button>
         <button id="source" class="primary">Find new matches</button>
       </div>
     </header>
     <p class="notice">
       💡 <strong>How it works:</strong> Click <strong>"Open &amp; Reply in Threads ↗"</strong> to open the target post in a new tab with your response already prefilled in the Threads composer and copied to your clipboard.
     </p>
-    <label class="product-filter">PRODUCT <select id="product-filter"><option value="">All products</option></select></label>
+    <div class="filter-bar">
+      <label class="product-filter">PRODUCT <select id="product-filter"><option value="">All products</option></select></label>
+      <button id="btn-quick-edit" class="secondary" title="Edit selected product keywords and parameters">✏️ Edit Product</button>
+    </div>
     <p id="message" role="status" aria-live="polite"></p>
     <section id="posts" aria-label="Matched posts"><p class="empty">Loading matched posts…</p></section>
   </main>
+
+  <dialog id="products-dialog">
+    <div class="modal-header">
+      <div>
+        <h2>⚙️ Product &amp; Keywords Settings</h2>
+        <p class="modal-subtitle">Edit keywords, AI prompt context, and match filters. Saves directly to disk.</p>
+      </div>
+      <button type="button" id="modal-close-x" class="modal-close-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-selector-row">
+      <label class="modal-select-label">
+        SELECT PRODUCT
+        <select id="modal-product-select"></select>
+      </label>
+      <button type="button" id="modal-btn-add" class="secondary">+ Add New</button>
+    </div>
+
+    <form id="product-form" onsubmit="return false;">
+      <div class="modal-status-toggle">
+        <label class="toggle-label">
+          <input type="checkbox" id="modal-active" checked>
+          <span>Active (Enable listening &amp; drafting)</span>
+        </label>
+        <span id="modal-file-badge" class="badge"></span>
+      </div>
+
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label for="modal-name">PRODUCT NAME / LABEL</label>
+          <input type="text" id="modal-name" required placeholder="e.g. Yollly">
+        </div>
+        <div class="modal-field">
+          <label for="modal-homepage">WEBSITE / HOMEPAGE</label>
+          <input type="url" id="modal-homepage" placeholder="https://example.com">
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <div class="field-header">
+          <label for="modal-keywords">
+            KEYWORDS / SEARCH PHRASES (КЛЮЧОВІ СЛОВА)
+          </label>
+          <span id="modal-keywords-count" class="badge">0 phrases</span>
+        </div>
+        <p class="field-hint">
+          One phrase per line. Threads posts matching these terms will be sourced and evaluated by AI.
+        </p>
+        <textarea id="modal-keywords" rows="7" placeholder="breakfast ideas&#10;quick breakfast&#10;що приготувати на сніданок&#10;ідеї для сніданку"></textarea>
+      </div>
+
+      <div class="modal-field">
+        <label for="modal-description">PRODUCT DESCRIPTION &amp; VALUE CONTEXT</label>
+        <p class="field-hint">
+          Used by AI to understand features, benefits, and how to authentically suggest your product.
+        </p>
+        <textarea id="modal-description" rows="3" placeholder="Briefly describe what your product does, main features, and who it helps..."></textarea>
+      </div>
+
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label for="modal-voice">TONE OF VOICE</label>
+          <textarea id="modal-voice" rows="2" placeholder="e.g. Warm, friendly, practical, and brief."></textarea>
+        </div>
+        <div class="modal-field">
+          <label for="modal-guidance">AI GUIDANCE &amp; BOUNDARIES</label>
+          <textarea id="modal-guidance" rows="2" placeholder="e.g. Give helpful advice first. Avoid pushy sales pitches."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label for="modal-threshold">MIN RELEVANCE SCORE (0–100)</label>
+          <input type="number" id="modal-threshold" min="0" max="100" value="75">
+        </div>
+        <div class="modal-field">
+          <label for="modal-skip">EXCLUDE / SKIP WORDS (comma-separated)</label>
+          <input type="text" id="modal-skip" placeholder="#ad, giveaway, sponsored">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="modal-save-btn" class="primary save-btn">💾 Save Product &amp; Keywords</button>
+        <button type="button" id="modal-cancel-btn" class="secondary">Cancel</button>
+        <span id="modal-status" class="feedback"></span>
+      </div>
+    </form>
+  </dialog>
   <template id="post-template">
     <article class="card">
       <div class="post-header">

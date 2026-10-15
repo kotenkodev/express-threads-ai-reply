@@ -1,11 +1,10 @@
 {
-  "version": 1,
   "key": "yollly",
   "active": true,
   "product": {
     "label": "Yollly",
     "homepage": "https://yollly.com",
-    "description": "Yollly is a breakfast recipe and planning app that helps people discover morning meals, cook with ingredients they already have, organize grocery shopping, and plan their breakfast week. Its recipe library covers quick weekday breakfasts, healthy and high-protein options, leisurely brunches, and sweet, savory, vegetarian, vegan, gluten-free, and low-carb choices. Users can filter by ingredients, preparation time, dietary needs, or mood. Taking a photo of available ingredients produces breakfast recipe suggestions. Recipes include step-by-step instructions, nutrition information, and ingredient details. Yollly is free to download and use. Premium unlocks unlimited recipes, advanced filters, full meal-planning features, and unlimited ingredient recognition. No specific subscription price or free-tier usage allowance has been supplied.",
+    "description": "Yollly is a breakfast recipe and planning app that helps people discover morning meals, cook with ingredients they already have, organize grocery shopping, and plan their breakfast week. Its recipe library covers quick weekday breakfasts, healthy and high-protein options, leisurely brunches, and sweet, savory, vegetarian, vegan, gluten-free, and low-carb choices. Users can filter by ingredients, preparation time, dietary needs, or mood. Taking a photo of available ingredients produces breakfast recipe suggestions. Recipes include step-by-step instructions, nutrition information, and ingredient details. Yollly is free to download and use. Premium unlocks unlimited recipes, advanced filters, full meal-planning features, and unlimited ingredient recognition.",
     "audience": "Busy professionals, meal preppers, fitness enthusiasts interested in protein and macros, parents seeking kid-friendly breakfasts, solo cooks, couples, and families who want practical morning meal ideas or are tired of repeating the same breakfast.",
     "strengths": [
       "Breakfast ideas ranging from meals ready in 10 minutes or less to weekend brunch",
@@ -34,15 +33,12 @@
       "білковий сніданок"
     ],
     "intent": "People actively asking for breakfast ideas, quick morning meals, high-protein options, kid-friendly breakfasts, dietary alternatives, ways to use ingredients they already have, or help planning breakfasts and grocery lists. Prioritize concrete needs such as being bored of the same meal, lacking morning cooking time, or not knowing what to make from the fridge. Match only when a Yollly feature addresses the specific need. Exclude recipe showcases with no request for help, food photos without a question, restaurant promotions, sponsored content, giveaways, unrelated lunch or dinner discussions, and requests for medical or therapeutic dietary advice.",
-    "ordering": "RECENT",
     "freshnessMinutes": 7200,
-    "reviewThreshold": 80,
+    "reviewThreshold": 50,
     "inspectPerRun": 25,
     "draftsPerRun": 5,
     "skipText": ["#ad", "sponsored", "giveaway", "paid partnership"],
-    "skipHandles": [],
-    "ownHandle": "vorgyn",
-    "provider": "scraper"
+    "skipHandles": []
   },
   "writing": {
     "locale": "match-post",
@@ -50,19 +46,13 @@
     "guidance": "Write one or two short sentences grounded in the author's actual breakfast problem. Lead with a useful suggestion, then mention Yollly only if one specific feature directly helps. For leftover ingredients, mention photo-based recipe suggestions; for rushed mornings, quick recipes; for repetitive meals, discovery and saved collections; for weekly preparation, breakfast planning and shopping lists. Do not list every feature. Never invent ingredients, exact nutrition values, preparation times for specific recipes, subscription prices, personal experience, or health outcomes. Do not imply every feature is unlimited on the free plan. Mention the free download or Premium only when relevant to a question about access or cost. Do not guarantee allergy safety or dietary suitability. Avoid slogans, urgency, download requests, and directing people to a bio link.",
     "characterBudget": 400,
     "permitLinks": false,
-    "forbiddenWording": ["download now", "use my code", "link in bio", "game changer", "must-have", "guaranteed results"]
-  },
-  "publishing": {
-    "credentialVariable": "THREADS_ACCESS_TOKEN",
-    "userId": "me",
-    "dailyBudget": 20,
-    "window": {
-      "fromHour": 9,
-      "untilHour": 22,
-      "timeZone": "Europe/Kyiv"
-    }
-  },
-  "generation": {
-    "temperature": 0.7
+    "forbiddenWording": [
+      "download now",
+      "use my code",
+      "link in bio",
+      "game changer",
+      "must-have",
+      "guaranteed results"
+    ]
   }
 }

@@ -1,5 +1,4 @@
 {
-  "version": 1,
   "key": "briefgarden",
   "active": true,
   "product": {
@@ -7,19 +6,30 @@
     "homepage": "https://briefgarden.example.com",
     "description": "Fictional example: a workspace that helps freelancers collect client requirements and turn them into clear project briefs. Replace this description with verified facts about your product.",
     "audience": "Independent designers and small creative teams",
-    "strengths": ["Reusable intake questionnaires", "Shared project requirements", "Client feedback in one place"]
+    "strengths": [
+      "Reusable intake questionnaires",
+      "Shared project requirements",
+      "Client feedback in one place"
+    ]
   },
   "listening": {
-    "phrases": ["unclear client brief", "organizing client feedback", "freelance project scope"],
+    "phrases": [
+      "unclear client brief",
+      "organizing client feedback",
+      "freelance project scope",
+      "freelance client communication"
+    ],
     "intent": "People asking how to clarify client requirements or reduce repeated revision requests.",
-    "ordering": "RECENT",
     "freshnessMinutes": 720,
     "reviewThreshold": 85,
     "inspectPerRun": 30,
     "draftsPerRun": 4,
-    "skipText": ["#ad", "sponsored", "giveaway"],
-    "skipHandles": [],
-    "ownHandle": ""
+    "skipText": [
+      "#ad",
+      "sponsored",
+      "giveaway"
+    ],
+    "skipHandles": []
   },
   "writing": {
     "locale": "match-post",
@@ -27,13 +37,11 @@
     "guidance": "Avoid making up pricing or claiming personal experience. Mention BriefGarden only when it directly addresses the problem.",
     "characterBudget": 320,
     "permitLinks": false,
-    "forbiddenWording": ["game changer", "download now", "use my code", "link in bio"]
-  },
-  "publishing": {
-    "credentialVariable": "THREADS_TOKEN_BRIEFGARDEN",
-    "userId": "me",
-    "dailyBudget": 10,
-    "window": { "fromHour": 9, "untilHour": 21, "timeZone": "Europe/Kyiv" }
-  },
-  "generation": { "temperature": 0.6 }
+    "forbiddenWording": [
+      "game changer",
+      "download now",
+      "use my code",
+      "link in bio"
+    ]
+  }
 }

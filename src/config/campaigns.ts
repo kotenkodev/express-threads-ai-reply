@@ -6,7 +6,7 @@ import type { CampaignConfig } from "../types/campaign.js";
 
 export * from "../types/campaign.js";
 
-export function getProductsPath(): string {
+function getProductsPath(): string {
   return env.PRODUCTS_DIR
     ? resolve(env.PRODUCTS_DIR)
     : fileURLToPath(new URL("../../products/", import.meta.url));

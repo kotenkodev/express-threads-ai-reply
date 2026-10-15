@@ -13,7 +13,7 @@ import { getRolling24hSearchCount } from "../db.js";
  * 3. Search query limits (protects against scraping rate limits)
  */
 
-export const PLATFORM_LIMITS = {
+const PLATFORM_LIMITS = {
   SEARCHES_PER_24H: 2200,
   AUTHOR_COOLDOWN_DAYS: 7,
 };

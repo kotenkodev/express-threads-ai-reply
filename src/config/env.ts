@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { z } from "zod";
-import cron from "node-cron";
 
 const booleanCoerce = z.preprocess((val) => {
   if (typeof val === "boolean") return val;
@@ -12,15 +11,18 @@ const booleanCoerce = z.preprocess((val) => {
   return val;
 }, z.boolean());
 
-export const environmentSchema = z.object({
+const environmentSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  DRY_RUN: booleanCoerce.default(true),
   USE_MOCK_POSTS: booleanCoerce.default(false),
-  CRON_SCHEDULE: z
-    .string()
-    .refine((val) => cron.validate(val), { message: "Invalid cron expression" })
-    .default("*/20 * * * *"),
+  PRODUCTS_DIR: z.preprocess((val) => (val === "" ? undefined : val), z.string().trim().min(1).optional()),
+  POST_SOURCE_PROVIDER: z.string().default("scraper"),
+  DB_ADAPTER: z.enum(["memory", "sqlite"]).default("sqlite"),
+  APIFY_TOKEN: z.string().optional(),
+  APIFY_ACTOR: z.string().default("burbn~threads-search-scraper"),
+  SCRAPER_ENDPOINT: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
+  SCRAPER_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-4o-mini"),
   OPENAI_BASE_URL: z.preprocess(
     (val) => (val === "" ? undefined : val),
@@ -40,19 +42,11 @@ export const environmentSchema = z.object({
       )
       .optional()
   ),
-  PRODUCTS_DIR: z.preprocess((val) => (val === "" ? undefined : val), z.string().trim().min(1).optional()),
-  POST_SOURCE_PROVIDER: z.string().default("scraper"),
-  DB_ADAPTER: z.enum(["memory", "sqlite"]).default("sqlite"),
-  SCRAPER_ENDPOINT: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
-  SCRAPER_API_KEY: z.string().optional(),
-  APIFY_TOKEN: z.string().optional(),
-  APIFY_ACTOR: z.string().default("burbn~threads-search-scraper"),
-  OPENAI_API_KEY: z.string().optional(),
 }).passthrough();
 
 export type Environment = z.infer<typeof environmentSchema>;
 
-export function parseEnvironment(input: Record<string, unknown>): Environment {
+function parseEnvironment(input: Record<string, unknown>): Environment {
   const result = environmentSchema.safeParse(input);
   if (!result.success) {
     const errorDetails = result.error.issues

@@ -12,10 +12,14 @@ import {
 } from "../db.js";
 import { evaluatePostAndGenerateReply } from "./ai.js";
 import { replyPolicyError } from "./reply-policy.js";
+import { productsRouter } from "./products-router.js";
 
-export function createReviewRouter(generate = evaluatePostAndGenerateReply) {
+function createReviewRouter(generate = evaluatePostAndGenerateReply) {
   const router = Router();
   const busyPosts = new Set<string>();
+
+  // Products and keywords management
+  router.use("/products", productsRouter);
 
   // Fetch pending review posts
   router.get("/", (_req, res) => {

@@ -297,4 +297,190 @@ document.querySelector('#source').addEventListener('click', async event => {
   }
 });
 
+// --- Products & Keywords Editor Modal Logic ---
+const productsDialog = document.querySelector('#products-dialog');
+const modalSelect = document.querySelector('#modal-product-select');
+const modalBtnAdd = document.querySelector('#modal-btn-add');
+const modalActive = document.querySelector('#modal-active');
+const modalFileBadge = document.querySelector('#modal-file-badge');
+const modalName = document.querySelector('#modal-name');
+const modalHomepage = document.querySelector('#modal-homepage');
+const modalKeywords = document.querySelector('#modal-keywords');
+const modalKeywordsCount = document.querySelector('#modal-keywords-count');
+const modalDescription = document.querySelector('#modal-description');
+const modalVoice = document.querySelector('#modal-voice');
+const modalGuidance = document.querySelector('#modal-guidance');
+const modalThreshold = document.querySelector('#modal-threshold');
+const modalSkip = document.querySelector('#modal-skip');
+const modalSaveBtn = document.querySelector('#modal-save-btn');
+const modalStatus = document.querySelector('#modal-status');
+const modalCloseX = document.querySelector('#modal-close-x');
+const modalCancelBtn = document.querySelector('#modal-cancel-btn');
+const btnProducts = document.querySelector('#btn-products');
+const btnQuickEdit = document.querySelector('#btn-quick-edit');
+
+let loadedProducts = [];
+let isNewProductMode = false;
+
+function updateKeywordsCount() {
+  const lines = modalKeywords.value.split('\n').map(l => l.trim()).filter(Boolean);
+  modalKeywordsCount.textContent = `${lines.length} phrase${lines.length === 1 ? '' : 's'}`;
+}
+
+modalKeywords.addEventListener('input', updateKeywordsCount);
+
+function setModalStatus(text, error = false) {
+  modalStatus.textContent = text;
+  modalStatus.classList.toggle('error', error);
+  modalStatus.classList.toggle('success', !error && Boolean(text));
+}
+
+function fillModalFields(prod) {
+  isNewProductMode = false;
+  modalActive.checked = prod.active !== false;
+  modalFileBadge.textContent = prod.fileName || `${prod.id}.json`;
+  modalName.value = prod.name || '';
+  modalHomepage.value = prod.homepage || '';
+  modalKeywords.value = Array.isArray(prod.keywords) ? prod.keywords.join('\n') : '';
+  modalDescription.value = prod.description || '';
+  modalVoice.value = prod.voice || '';
+  modalGuidance.value = prod.guidance || '';
+  modalThreshold.value = prod.reviewThreshold ?? 75;
+  modalSkip.value = Array.isArray(prod.skipText) ? prod.skipText.join(', ') : '';
+  updateKeywordsCount();
+  setModalStatus('');
+}
+
+async function fetchProductsForModal(selectId) {
+  setModalStatus('Loading products...');
+  try {
+    const res = await request('/api/products');
+    loadedProducts = res.products || [];
+    modalSelect.replaceChildren(
+      ...loadedProducts.map(p => new Option(p.active ? p.name : `${p.name} (paused)`, p.id))
+    );
+
+    const targetId = selectId || modalSelect.value || (loadedProducts[0]?.id ?? '');
+    if (targetId) {
+      modalSelect.value = targetId;
+      const target = loadedProducts.find(p => p.id === targetId);
+      if (target) fillModalFields(target);
+    }
+    setModalStatus('');
+  } catch (err) {
+    setModalStatus(err.message, true);
+  }
+}
+
+async function openProductsDialog(preferredId) {
+  setModalStatus('');
+  await fetchProductsForModal(preferredId || productFilter.value);
+  productsDialog.showModal();
+}
+
+modalSelect.addEventListener('change', () => {
+  const chosen = loadedProducts.find(p => p.id === modalSelect.value);
+  if (chosen) fillModalFields(chosen);
+});
+
+modalBtnAdd.addEventListener('click', () => {
+  const key = prompt('Enter unique ID for new product (e.g. "myproduct" or "cookbot"):');
+  if (!key) return;
+  const sanitized = key.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
+  if (!sanitized) {
+    alert('Invalid ID. Use letters, numbers, hyphens or underscores.');
+    return;
+  }
+  isNewProductMode = sanitized;
+  modalSelect.replaceChildren(
+    new Option(`+ New: ${sanitized}`, sanitized),
+    ...loadedProducts.map(p => new Option(p.name, p.id))
+  );
+  modalSelect.value = sanitized;
+  modalActive.checked = true;
+  modalFileBadge.textContent = `${sanitized}.json (new)`;
+  modalName.value = sanitized;
+  modalHomepage.value = '';
+  modalKeywords.value = '';
+  modalDescription.value = '';
+  modalVoice.value = 'Helpful, warm, and conversational.';
+  modalGuidance.value = 'Provide one useful answer first, then mention the product naturally.';
+  modalThreshold.value = 75;
+  modalSkip.value = '#ad, giveaway, sponsored';
+  updateKeywordsCount();
+  setModalStatus(`Ready to configure new product: ${sanitized}`);
+});
+
+modalSaveBtn.addEventListener('click', async () => {
+  const keywords = modalKeywords.value
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (keywords.length === 0) {
+    setModalStatus('Error: At least one search phrase / keyword is required.', true);
+    modalKeywords.focus();
+    return;
+  }
+
+  const name = modalName.value.trim();
+  if (!name) {
+    setModalStatus('Error: Product name is required.', true);
+    modalName.focus();
+    return;
+  }
+
+  const threshold = Number(modalThreshold.value);
+  if (isNaN(threshold) || threshold < 0 || threshold > 100) {
+    setModalStatus('Error: Match score must be between 0 and 100.', true);
+    modalThreshold.focus();
+    return;
+  }
+
+  const skipText = modalSkip.value
+    .split(/[,\n]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const payload = {
+    active: modalActive.checked,
+    name,
+    homepage: modalHomepage.value.trim(),
+    keywords,
+    description: modalDescription.value.trim(),
+    voice: modalVoice.value.trim(),
+    guidance: modalGuidance.value.trim(),
+    reviewThreshold: threshold,
+    skipText,
+  };
+
+  modalSaveBtn.disabled = true;
+  setModalStatus('Saving product settings to disk...');
+
+  try {
+    let result;
+    if (isNewProductMode) {
+      payload.id = isNewProductMode;
+      result = await request('/api/products', payload, { method: 'POST' });
+    } else {
+      const id = modalSelect.value;
+      result = await request(`/api/products/${encodeURIComponent(id)}`, payload, { method: 'PUT' });
+    }
+
+    setModalStatus(`✅ Saved! Product "${result.product.name}" updated successfully.`);
+    await fetchProductsForModal(result.product.id);
+    await load(); // Reload dashboard products & filters
+  } catch (err) {
+    setModalStatus(`Failed to save: ${err.message}`, true);
+  } finally {
+    modalSaveBtn.disabled = false;
+  }
+});
+
+modalCloseX.addEventListener('click', () => productsDialog.close());
+modalCancelBtn.addEventListener('click', () => productsDialog.close());
+btnProducts.addEventListener('click', () => openProductsDialog());
+btnQuickEdit.addEventListener('click', () => openProductsDialog(productFilter.value));
+
 load();
+

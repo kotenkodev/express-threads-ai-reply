@@ -30,14 +30,14 @@ export function getDatabaseRepository(): DatabaseRepository {
  * Dynamically swaps the active database repository at runtime.
  * Allows swapping to SQLite, PostgreSQL, Supabase, Redis, or mock test databases seamlessly.
  */
-export function setDatabaseRepository(repository: DatabaseRepository): void {
+function setDatabaseRepository(repository: DatabaseRepository): void {
   activeRepository = repository;
 }
 
 /**
  * Resets repository back to default.
  */
-export function resetDatabaseRepository(): void {
+function resetDatabaseRepository(): void {
   activeRepository = null;
 }
 

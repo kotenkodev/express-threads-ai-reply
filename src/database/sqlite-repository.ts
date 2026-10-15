@@ -94,7 +94,6 @@ export class SqliteDatabaseRepository implements DatabaseRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_campaign_username ON processed_posts (campaign_id, username);
       CREATE INDEX IF NOT EXISTS idx_campaign_status_created ON processed_posts (campaign_id, status, created_at);
-      CREATE INDEX IF NOT EXISTS idx_shortcode ON processed_posts (shortcode);
       CREATE INDEX IF NOT EXISTS idx_created_at ON processed_posts (created_at);
 
       CREATE TABLE IF NOT EXISTS search_logs (
@@ -117,6 +116,13 @@ export class SqliteDatabaseRepository implements DatabaseRepository {
       this.sqlite.exec("ALTER TABLE processed_posts ADD COLUMN intent_url TEXT;");
     } catch {
       // Column already exists
+    }
+
+    // Create index on shortcode only after column is confirmed to exist
+    try {
+      this.sqlite.exec("CREATE INDEX IF NOT EXISTS idx_shortcode ON processed_posts (shortcode);");
+    } catch {
+      // Index creation safe fallback
     }
 
     this.db = drizzle(this.sqlite, { schema: { processedPosts, searchLogs } });

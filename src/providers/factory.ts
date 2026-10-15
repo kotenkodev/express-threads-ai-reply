@@ -16,14 +16,14 @@ const sourceProviders: Record<string, PostSourceProvider> = {
 /**
  * Registers a new post source provider / scraper at runtime.
  */
-export function registerPostSourceProvider(name: string, provider: PostSourceProvider): void {
+function registerPostSourceProvider(name: string, provider: PostSourceProvider): void {
   sourceProviders[name.toLowerCase()] = provider;
 }
 
 /**
  * Lists all registered post source providers.
  */
-export function getRegisteredPostSourceNames(): string[] {
+function getRegisteredPostSourceNames(): string[] {
   return Object.keys(sourceProviders);
 }
 

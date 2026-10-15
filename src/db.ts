@@ -17,7 +17,7 @@ export function getPost(postId: string): ProcessedPostRecord | undefined {
   return getDatabaseRepository().getPost(postId);
 }
 
-export function getPostByShortcode(shortcode: string): ProcessedPostRecord | undefined {
+function getPostByShortcode(shortcode: string): ProcessedPostRecord | undefined {
   return getDatabaseRepository().getPostByShortcode?.(shortcode);
 }
 
@@ -31,7 +31,7 @@ export function getPendingPosts(campaignId?: string): ProcessedPostRecord[] {
     : getDatabaseRepository().getMatchedPosts(campaignId);
 }
 
-export function editQueuedPost(postId: string, replyText: string): boolean {
+function editQueuedPost(postId: string, replyText: string): boolean {
   return getDatabaseRepository().editQueuedPost(postId, replyText);
 }
 
@@ -57,7 +57,7 @@ export function markPostIgnored(postId: string): boolean {
   return true;
 }
 
-export function claimQueuedPost(postId: string): boolean {
+function claimQueuedPost(postId: string): boolean {
   return getDatabaseRepository().claimQueuedPost(postId);
 }
 
@@ -77,11 +77,11 @@ export function hasRepliedToUserRecently(campaignId: string, username: string, d
   return getDatabaseRepository().hasRepliedToUserRecently(campaignId, username, days);
 }
 
-export function getDailyReplyCount(campaignId: string): number {
+function getDailyReplyCount(campaignId: string): number {
   return getDatabaseRepository().getDailyReplyCount(campaignId);
 }
 
-export function getNextQueuedPost(campaignId: string): ProcessedPostRecord | undefined {
+function getNextQueuedPost(campaignId: string): ProcessedPostRecord | undefined {
   return getDatabaseRepository().getNextQueuedPost(campaignId);
 }
 
@@ -105,14 +105,14 @@ export function getDashboardData(): DashboardData {
   return getDatabaseRepository().getDashboardData();
 }
 
-export function deletePost(postId: string): boolean {
+function deletePost(postId: string): boolean {
   return getDatabaseRepository().deletePost?.(postId) ?? false;
 }
 
 /**
  * Compatibility handle for legacy scripts or tests that invoke raw SQLite queries.
  */
-export const sqlite = {
+const sqlite = {
   prepare: (sqlQuery: string) => ({
     run: (...args: unknown[]) => {
       if (sqlQuery.includes("DELETE FROM processed_posts WHERE post_id")) {
@@ -130,7 +130,7 @@ export const sqlite = {
 /**
  * Compatibility handle for Drizzle ORM operations.
  */
-export const db = new Proxy({}, {
+const db = new Proxy({}, {
   get(_target, prop) {
     const repo = getDatabaseRepository();
     if (repo instanceof SqliteDatabaseRepository) {

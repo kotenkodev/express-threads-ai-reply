@@ -1,8 +1,8 @@
 import { env } from "./config/env.js";
 import express, { Request, Response } from "express";
-import cron from "node-cron";
 import { fileURLToPath } from "node:url";
 import { reviewRouter } from "./services/review.js";
+import { productsRouter } from "./services/products-router.js";
 import { campaigns, getCampaigns } from "./config/campaigns.js";
 import {
   getDashboardData,
@@ -27,7 +27,7 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    activeCampaigns: campaigns.filter((c) => c.enabled).length,
+    activeCampaigns: getCampaigns().filter((c) => c.enabled).length,
     pendingPosts: getQueuedCount(),
   });
 });
@@ -103,43 +103,20 @@ app.post("/trigger", triggerHandler);
 // Review & Human-in-the-Loop Web Intent API
 app.use("/api/review", reviewRouter);
 
+// Products & Keywords Management API
+app.use("/api/products", productsRouter);
+
 // Static frontend dashboard
 app.use(express.static(fileURLToPath(new URL("../public", import.meta.url))));
-
-/**
- * Sourcing Producer Loop: Cron schedule (every 20 min or configured CRON_SCHEDULE)
- */
-const cronPattern = env.CRON_SCHEDULE || "*/20 * * * *";
-cron.schedule(cronPattern, async () => {
-  if (isProducerRunning) {
-    console.log(
-      "[Scheduler] Skipping scheduled producer cycle because another cycle is active."
-    );
-    return;
-  }
-  console.log(
-    `[Scheduler] Triggering scheduled Sourcing Producer cycle (${cronPattern})...`
-  );
-  try {
-    isProducerRunning = true;
-    await runSourcingProducerCycle();
-  } catch (err) {
-    console.error("[Scheduler Error]:", err);
-  } finally {
-    isProducerRunning = false;
-  }
-});
 
 app.listen(PORT, () => {
   console.log(
     `\n🚀 Threads AI Social Reply Bot (Human-in-the-Loop) running at http://localhost:${PORT}`
   );
   console.log(`📡 Scraper Provider: "${getPostSourceProvider().name}"`);
-  console.log(`⏰ Producer Cron: "${cronPattern}"`);
   console.log(
-    `🎯 Active campaigns: ${campaigns
-      .filter((c) => c.enabled)
-      .map((c) => c.productName)
+    `🎯 Configured products: ${getCampaigns()
+      .map((c) => (c.enabled ? c.productName : `${c.productName} (paused)`))
       .join(", ")}`
   );
   console.log(`📋 Human-in-the-loop dashboard: http://localhost:${PORT}\n`);
