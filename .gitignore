@@ -1,6 +1,9 @@
 node_modules/
+.tools/
 dist/
 data/
 .env
 *.log
 .DS_Store
+.postman/
+postman/

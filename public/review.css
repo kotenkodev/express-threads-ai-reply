@@ -1,0 +1,42 @@
+:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; color: #e9edf5; background: #0c1018; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1080px; margin: 0 auto; padding: 48px 24px; }
+header, .toolbar, .post-header, .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+header, .post-header { justify-content: space-between; }
+h1 { font-size: 32px; margin: 10px 0; letter-spacing: -1px; }
+h1 span { color: #8d9bb3; font-size: 22px; margin-left: 6px; }
+.eyebrow { color: #a5b4fc; font-size: 11px; letter-spacing: 2px; font-weight: 700; }
+.subtitle, .notice, .reason, .campaign { color: #9aa8bd; font-size: 14px; line-height: 1.6; }
+.notice { border-top: 1px solid #293140; padding-top: 24px; margin-top: 28px; }
+button { font: inherit; font-size: 13px; font-weight: 600; padding: 10px 15px; border: 1px solid #354156; border-radius: 8px; background: #202a39; color: #e9edf5; cursor: pointer; }
+button:hover { background: #303e52; }
+button:disabled { opacity: .5; cursor: wait; }
+button.primary { background: #adbaff; border-color: #adbaff; color: #11182e; }
+button.primary:hover { background: #c4ceff; }
+button.danger { color: #f7a5ab; background: transparent; }
+button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px solid #adbaff; outline-offset: 3px; }
+.badge { font-size: 12px; background: #263349; color: #c3d6f5; padding: 6px 10px; border-radius: 6px; }
+.auth-link { text-decoration: none; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.logout-link { background: #3b181b; color: #fca5a5; border: 1px solid #7f1d1d; cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 11px; }
+.logout-link:hover { background: #5f1d24; color: #fee2e2; }
+.quota-badge { background: #162032; border: 1px solid #2e3e5b; color: #94a3b8; font-size: 11px; font-weight: 500; }
+.quota-badge.ok { color: #86efac; border-color: #166534; }
+.quota-badge.warning { color: #fde047; border-color: #854d0e; }
+.quota-badge.danger { color: #fca5a5; border-color: #991b1b; }
+.card { background: #151c29; border: 1px solid #2a3446; padding: 26px; border-radius: 14px; margin: 20px 0; }
+.campaign { display: inline-block; margin-left: 12px; }
+.post-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; font-size: 17px; }
+a { color: #adbaff; font-size: 13px; }
+.reason { margin: 20px 0; border-left: 2px solid #536183; padding-left: 12px; }
+label { display: block; font-size: 11px; letter-spacing: 1px; color: #a5b4cb; }
+textarea { display: block; width: 100%; margin: 10px 0 16px; border: 1px solid #465674; border-radius: 8px; background: #101620; padding: 14px; color: #e9edf5; font: 15px/1.6 system-ui, sans-serif; resize: vertical; }
+textarea[readonly] { border-color: #293449; color: #c9d3e4; }
+.send { margin-left: auto; }
+.product-filter { margin-top: 20px; }
+select { margin-left: 10px; padding: 10px; border: 1px solid #354156; border-radius: 8px; background: #202a39; color: #e9edf5; font: inherit; }
+.feedback, #message { font-size: 14px; line-height: 1.5; color: #b5c9f9; }
+.error { color: #ffb4b4 !important; }
+.feedback:empty, #message:empty { display: none; }
+.empty { text-align: center; padding: 70px 20px; color: #a5b4cb; border: 1px dashed #354156; border-radius: 14px; }
+@media (max-width: 600px) { main { padding: 24px 16px; } .card { padding: 18px; } .toolbar { margin-top: 12px; } .actions button { flex: 1 1 40%; } .send { margin-left: 0; } }

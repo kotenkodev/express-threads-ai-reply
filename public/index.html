@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matched posts · Threads review</title>
+  <link rel="stylesheet" href="/review.css">
+  <script src="/review.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><p class="eyebrow">THREADS / REVIEW QUEUE</p><h1>Matched posts <span id="count">—</span></h1><p class="subtitle">Review the conversation. Make the response yours.</p></div>
+      <div class="toolbar">
+        <a id="auth-btn" href="/auth/login" class="badge auth-link" title="Connect your Threads account via OAuth">🔗 Connect Threads</a>
+        <span id="quota-badge" class="badge quota-badge" style="display: none;" title="Meta Threads 24h reply limit">Quota: —</span>
+        <button id="logout-btn" class="badge logout-link" style="display: none;" title="Disconnect active Threads account">Disconnect</button>
+        <button id="import-post-btn" title="Fetch your latest post from Threads to test live AI reply">🧪 Test My Real Post</button>
+        <button id="refresh">Refresh</button>
+        <button id="source" class="primary">Find new matches</button>
+      </div>
+    </header>
+    <p class="notice">Review matched conversations. Choose "Queue Message Reply" to queue for scheduled posting, or "Send Now" to post immediately to Threads.</p>
+    <label class="product-filter">PRODUCT <select id="product-filter"><option value="">All products</option></select></label>
+    <p id="message" role="status" aria-live="polite"></p>
+    <section id="posts" aria-label="Matched posts"><p class="empty">Loading matched posts…</p></section>
+  </main>
+  <template id="post-template">
+    <article class="card">
+      <div class="post-header"><div><strong class="author"></strong><span class="campaign"></span></div><span class="score badge"></span></div>
+      <p class="post-text"></p>
+      <a class="permalink" target="_blank" rel="noopener noreferrer">Open original post ↗</a>
+      <p class="reason"></p>
+      <div class="draft-header"><label>YOUR RESPONSE<textarea rows="4" readonly></textarea></label></div>
+      <div class="actions">
+        <button data-action="reject" class="danger">Reject</button>
+        <button data-action="edit">Edit text</button>
+        <button data-action="regenerate">Regenerate</button>
+        <button data-action="queue" class="secondary">Queue Message Reply</button>
+        <button data-action="send" class="primary send">Send Now</button>
+      </div>
+      <p class="feedback" role="status" aria-live="polite"></p>
+    </article>
+  </template>
+</body>
+</html>
