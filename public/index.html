@@ -3,41 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Matched posts · Threads review</title>
+  <title>Threads AI Reply · Human-in-the-Loop Review</title>
   <link rel="stylesheet" href="/review.css">
   <script src="/review.js" defer></script>
 </head>
 <body>
   <main>
     <header>
-      <div><p class="eyebrow">THREADS / REVIEW QUEUE</p><h1>Matched posts <span id="count">—</span></h1><p class="subtitle">Review the conversation. Make the response yours.</p></div>
+      <div>
+        <p class="eyebrow">THREADS / HUMAN-IN-THE-LOOP PIPELINE</p>
+        <h1>Matched Posts <span id="count">—</span></h1>
+        <p class="subtitle">Review AI drafts. 1-click launch into the official Threads composer with prefilled text.</p>
+      </div>
       <div class="toolbar">
-        <a id="auth-btn" href="/auth/login" class="badge auth-link" title="Connect your Threads account via OAuth">🔗 Connect Threads</a>
-        <span id="quota-badge" class="badge quota-badge" style="display: none;" title="Meta Threads 24h reply limit">Quota: —</span>
-        <button id="logout-btn" class="badge logout-link" style="display: none;" title="Disconnect active Threads account">Disconnect</button>
-        <button id="import-post-btn" title="Fetch your latest post from Threads to test live AI reply">🧪 Test My Real Post</button>
         <button id="refresh">Refresh</button>
         <button id="source" class="primary">Find new matches</button>
       </div>
     </header>
-    <p class="notice">Review matched conversations. Choose "Queue Message Reply" to queue for scheduled posting, or "Send Now" to post immediately to Threads.</p>
+    <p class="notice">
+      💡 <strong>How it works:</strong> Click <strong>"Open &amp; Reply in Threads ↗"</strong> to open the target post in a new tab with your response already prefilled in the Threads composer and copied to your clipboard.
+    </p>
     <label class="product-filter">PRODUCT <select id="product-filter"><option value="">All products</option></select></label>
     <p id="message" role="status" aria-live="polite"></p>
     <section id="posts" aria-label="Matched posts"><p class="empty">Loading matched posts…</p></section>
   </main>
   <template id="post-template">
     <article class="card">
-      <div class="post-header"><div><strong class="author"></strong><span class="campaign"></span></div><span class="score badge"></span></div>
+      <div class="post-header">
+        <div>
+          <strong class="author"></strong>
+          <span class="shortcode-badge badge"></span>
+          <span class="campaign"></span>
+        </div>
+        <span class="score badge"></span>
+      </div>
       <p class="post-text"></p>
-      <a class="permalink" target="_blank" rel="noopener noreferrer">Open original post ↗</a>
+      <a class="permalink" target="_blank" rel="noopener noreferrer">View conversation on Threads ↗</a>
       <p class="reason"></p>
-      <div class="draft-header"><label>YOUR RESPONSE<textarea rows="4" readonly></textarea></label></div>
+      <div class="draft-header"><label>YOUR RESPONSE DRAFT<textarea rows="2" readonly></textarea></label></div>
       <div class="actions">
-        <button data-action="reject" class="danger">Reject</button>
+        <button data-action="ignore" class="danger">Ignore</button>
         <button data-action="edit">Edit text</button>
-        <button data-action="regenerate">Regenerate</button>
-        <button data-action="queue" class="secondary">Queue Message Reply</button>
-        <button data-action="send" class="primary send">Send Now</button>
+        <button data-action="regenerate">Regenerate AI</button>
+        <button data-action="replied" class="secondary">✓ Mark as Replied</button>
+        <button data-action="open-intent" class="primary send">🚀 Open &amp; Reply in Threads ↗</button>
       </div>
       <p class="feedback" role="status" aria-live="polite"></p>
     </article>

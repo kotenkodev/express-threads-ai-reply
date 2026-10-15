@@ -1,55 +1,39 @@
-import type { CampaignConfig } from "../types/campaign.js";
-import {
-  hasRepliedToUserRecently,
-  getDailyReplyCount,
-  getRolling24hSearchCount,
-} from "../db.js";
-import { replyPolicyError } from "./reply-policy.js";
+import { getRolling24hSearchCount } from "../db.js";
 
-export const THREADS_PLATFORM_LIMITS = {
+/**
+ * Platform Sourcing & Safety Guardrails:
+ * Note: With the Human-in-the-Loop Web Intent pipeline, automated posting
+ * anti-ban logic (such as container waiting, posting jitter, and active hours)
+ * is no longer needed because publishing is performed manually by a human in
+ * their personal browser tab.
+ *
+ * Sourcing guardrails retained below:
+ * 1. Post freshness filter (avoids commenting on stale, outdated discussions)
+ * 2. Author cooldown (prevents repeatedly pitching to the same author within 7 days)
+ * 3. Search query limits (protects against scraping rate limits)
+ */
+
+export const PLATFORM_LIMITS = {
   SEARCHES_PER_24H: 2200,
-  REPLIES_PER_24H: 1000,
-  RECOMMENDED_DAILY_REPLY_CAP: 25,
-  CONTAINER_PROCESSING_WAIT_MS: 20000, // 15-30s recommended by Meta docs
   AUTHOR_COOLDOWN_DAYS: 7,
 };
+
+// Backward-compatibility alias
+export const THREADS_PLATFORM_LIMITS = PLATFORM_LIMITS;
 
 export interface GuardrailCheckResult {
   allowed: boolean;
   reason?: string;
-  code?: "OFF_HOURS" | "DAILY_LIMIT" | "SEARCH_QUOTA" | "COOLDOWN" | "EXPIRED" | "POLICY_VIOLATION";
+  code?: "SEARCH_QUOTA" | "COOLDOWN" | "EXPIRED";
 }
 
 /**
- * Checks if current time is within configured active hours in target timezone.
- * Prevents 24/7 bot behavior flags by Meta.
+ * Verifies if a post was published recently enough to be relevant for a response.
  */
-export function isWithinActiveHours(
-  startHour: number,
-  endHour: number,
-  timeZone?: string
+export function isPostFresh(
+  createdAtIsoOrSqlite: string,
+  maxPostAgeMinutes: number,
 ): boolean {
-  const currentHour = timeZone
-    ? Number(
-        new Intl.DateTimeFormat("en-GB", {
-          timeZone,
-          hour: "numeric",
-          hourCycle: "h23",
-        }).format(new Date())
-      )
-    : new Date().getHours();
-
-  if (startHour <= endHour) {
-    return currentHour >= startHour && currentHour < endHour;
-  }
-  // Handles overnight schedules if configured (e.g., 22 to 4)
-  return currentHour >= startHour || currentHour < endHour;
-}
-
-/**
- * Verifies if post is recent enough to comment on.
- */
-export function isPostFresh(createdAtIsoOrSqlite: string, maxPostAgeMinutes: number): boolean {
   const dateStr = createdAtIsoOrSqlite.includes("T")
     ? createdAtIsoOrSqlite
     : createdAtIsoOrSqlite.replace(" ", "T") + "Z";
@@ -59,27 +43,16 @@ export function isPostFresh(createdAtIsoOrSqlite: string, maxPostAgeMinutes: num
 }
 
 /**
- * Generates a randomized human jitter delay (in milliseconds).
- */
-export function getHumanJitterMs(minSeconds: number = 180, maxSeconds: number = 600): number {
-  const min = Math.max(0, minSeconds);
-  const max = Math.max(min, maxSeconds);
-  const randomSeconds = Math.floor(Math.random() * (max - min + 1)) + min;
-  return randomSeconds * 1000;
-}
-
-/**
- * Checks search quota limit before firing search requests.
+ * Checks search quota limit before firing search/scraping requests.
  */
 export function validateSearchQuota(): GuardrailCheckResult {
   const rollingSearches = getRolling24hSearchCount();
-  if (rollingSearches >= THREADS_PLATFORM_LIMITS.SEARCHES_PER_24H) {
+  if (rollingSearches >= PLATFORM_LIMITS.SEARCHES_PER_24H) {
     return {
       allowed: false,
       code: "SEARCH_QUOTA",
-      reason: `Search quota reached (${rollingSearches}/${THREADS_PLATFORM_LIMITS.SEARCHES_PER_24H} in 24h)`,
+      reason: `Search quota reached (${rollingSearches}/${PLATFORM_LIMITS.SEARCHES_PER_24H} in 24h)`,
     };
   }
   return { allowed: true };
 }
-

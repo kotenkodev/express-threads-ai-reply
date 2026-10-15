@@ -11,17 +11,50 @@ import {
 
 export * from "./types/db.js";
 export * from "./database/index.js";
+export { buildThreadsReplyIntentUrl } from "./utils/intent.js";
 
 export function getPost(postId: string): ProcessedPostRecord | undefined {
   return getDatabaseRepository().getPost(postId);
+}
+
+export function getPostByShortcode(shortcode: string): ProcessedPostRecord | undefined {
+  return getDatabaseRepository().getPostByShortcode?.(shortcode);
 }
 
 export function getMatchedPosts(campaignId?: string): ProcessedPostRecord[] {
   return getDatabaseRepository().getMatchedPosts(campaignId);
 }
 
+export function getPendingPosts(campaignId?: string): ProcessedPostRecord[] {
+  return getDatabaseRepository().getPendingPosts
+    ? getDatabaseRepository().getPendingPosts!(campaignId)
+    : getDatabaseRepository().getMatchedPosts(campaignId);
+}
+
 export function editQueuedPost(postId: string, replyText: string): boolean {
   return getDatabaseRepository().editQueuedPost(postId, replyText);
+}
+
+export function updatePostDraft(postId: string, replyText: string): boolean {
+  return getDatabaseRepository().updatePostDraft
+    ? getDatabaseRepository().updatePostDraft!(postId, replyText)
+    : getDatabaseRepository().editQueuedPost(postId, replyText);
+}
+
+export function markPostReplied(postId: string, replyId?: string): boolean {
+  if (getDatabaseRepository().markPostReplied) {
+    return getDatabaseRepository().markPostReplied!(postId, replyId);
+  }
+  getDatabaseRepository().updatePostStatus(postId, "REPLIED", { reply_id: replyId });
+  return true;
+}
+
+export function markPostIgnored(postId: string): boolean {
+  if (getDatabaseRepository().markPostIgnored) {
+    return getDatabaseRepository().markPostIgnored!(postId);
+  }
+  getDatabaseRepository().updatePostStatus(postId, "IGNORED");
+  return true;
 }
 
 export function claimQueuedPost(postId: string): boolean {
@@ -36,8 +69,8 @@ export function getRolling24hSearchCount(): number {
   return getDatabaseRepository().getRolling24hSearchCount();
 }
 
-export function isPostProcessed(postId: string): boolean {
-  return getDatabaseRepository().isPostProcessed(postId);
+export function isPostProcessed(postId: string, shortcode?: string): boolean {
+  return getDatabaseRepository().isPostProcessed(postId, shortcode);
 }
 
 export function hasRepliedToUserRecently(campaignId: string, username: string, days: number = 7): boolean {
@@ -59,7 +92,7 @@ export function getQueuedCount(campaignId?: string): number {
 export function updatePostStatus(
   postId: string,
   status: PostStatus,
-  extra?: { reply_id?: string; ai_reasoning?: string }
+  extra?: { reply_id?: string; ai_reasoning?: string; intent_url?: string }
 ): void {
   getDatabaseRepository().updatePostStatus(postId, status, extra);
 }

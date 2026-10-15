@@ -1,212 +1,158 @@
-import axios from "axios";
-import { env, readCredential } from "../config/env.js";
-import { Router } from "express";
-import { campaigns } from "../config/campaigns.js";
+import { Router, Request, Response } from "express";
+import { campaigns, getCampaigns } from "../config/campaigns.js";
 import {
   getPost,
   getMatchedPosts,
-  editQueuedPost,
+  getPendingPosts,
+  updatePostDraft,
+  markPostReplied,
+  markPostIgnored,
   updatePostStatus,
-  saveProcessedPost,
+  buildThreadsReplyIntentUrl,
 } from "../db.js";
 import { evaluatePostAndGenerateReply } from "./ai.js";
-import { runPostingConsumerTick } from "../workers/consumer.js";
 import { replyPolicyError } from "./reply-policy.js";
 
 export function createReviewRouter(generate = evaluatePostAndGenerateReply) {
   const router = Router();
   const busyPosts = new Set<string>();
-  // Serialize sends across campaigns: their tokens may belong to the same account.
-  let sending = false;
 
+  // Fetch pending review posts
   router.get("/", (_req, res) => {
+    const currentCampaigns = getCampaigns();
+    const posts = (getPendingPosts ? getPendingPosts() : getMatchedPosts()).map((post) => {
+      const campaign = currentCampaigns.find((c) => c.id === post.campaign_id);
+      const shortcode = post.shortcode || (post.permalink ? post.permalink.match(/\/post\/([A-Za-z0-9_-]+)/)?.[1] : undefined);
+      const replyText = post.reply_text || post.aiDraftReply || "";
+      const intentUrl =
+        post.intent_url ||
+        (replyText && (shortcode || post.permalink)
+          ? buildThreadsReplyIntentUrl(shortcode || post.permalink!, replyText)
+          : null);
+
+      return {
+        ...post,
+        shortcode: shortcode ?? null,
+        relevanceScore: post.ai_score ?? null,
+        aiDraftReply: post.reply_text ?? null,
+        intent_url: intentUrl,
+        productName: campaign?.productName || post.campaign_id,
+        characterBudget: campaign?.writing?.characterBudget ?? 500,
+      };
+    });
+
     res.set("Cache-Control", "no-store").json({
-      posts: getMatchedPosts().map((post) => {
-        const campaign = campaigns.find((c) => c.id === post.campaign_id);
-        return {
-          ...post,
-          productName: campaign?.productName || post.campaign_id,
-          characterBudget: campaign?.writing?.characterBudget ?? 500,
-        };
-      }),
-      dryRun: env.DRY_RUN,
-      products: campaigns
-        .filter((c) => c.enabled)
-        .map((c) => ({ id: c.id, name: c.productName })),
+      posts,
+      products: currentCampaigns.map((c) => ({
+        id: c.id,
+        name: c.enabled ? c.productName : `${c.productName} (paused)`,
+        enabled: c.enabled,
+      })),
     });
   });
 
-  router.post("/import-my-post", async (_req, res) => {
-    const token = readCredential("THREADS_ACCESS_TOKEN");
-    if (!token) {
-      return res.status(400).json({ error: "Threads account is not connected. Connect Threads first." });
-    }
-
-    try {
-      const resp = await axios.get<{
-        data: Array<{
-          id: string;
-          text?: string;
-          permalink?: string;
-          username?: string;
-          timestamp?: string;
-        }>;
-      }>("https://graph.threads.net/v1.0/me/threads", {
-        params: {
-          fields: "id,text,permalink,timestamp,username",
-          limit: 5,
-          access_token: token,
-        },
-        timeout: 10000,
-      });
-
-      const items = resp.data?.data || [];
-      if (!items.length) {
-        return res.status(404).json({
-          error: "No posts found on your connected Threads account. Create a post on Threads first!",
-        });
-      }
-
-      const target = items[0];
-      const campaign = campaigns.find((c) => c.enabled) || campaigns[0];
-      const text = target.text || "Live test post from Threads";
-      const username = target.username || "me";
-
-      const evalResult = await generate(text, username, campaign);
-      const replyText = evalResult.replyText || "Смачного сніданку!";
-
-      saveProcessedPost({
-        post_id: target.id,
-        campaign_id: campaign.id,
-        username,
-        post_text: text,
-        permalink: target.permalink || `https://www.threads.com/@${username}`,
-        reply_text: replyText,
-        ai_score: evalResult.confidenceScore || 95,
-        ai_reasoning: evalResult.reasoning || "Real post from connected Threads account",
-        status: "QUEUED",
-      });
-
-      return res.json({
-        success: true,
-        message: `Imported your real Threads post (ID: ${target.id}) into the review queue!`,
-        postId: target.id,
-      });
-    } catch (err) {
-      return res.status(500).json({ error: (err as Error).message });
-    }
-  });
-
-  router.post("/:id/:action", async (req, res) => {
-    const id = String(req.params.id);
-    const action = String(req.params.action);
-    if (!["reject", "edit", "regenerate", "send", "queue"].includes(action)) {
+  // Core action processor with concurrency lock per post
+  async function handlePostAction(id: string, action: string, req: Request, res: Response) {
+    if (!["reject", "ignore", "edit", "regenerate", "send", "replied", "queue"].includes(action)) {
       return res.status(404).json({ error: "Unknown review action" });
     }
+
     const post = getPost(id);
     if (!post) return res.status(404).json({ error: "Post not found" });
-    if (post.status !== "QUEUED" || busyPosts.has(id)) {
-      return res.status(409).json({
-        error:
-          "Post is no longer available for review or has an action in progress. Refresh the queue.",
-      });
+
+    if (busyPosts.has(id)) {
+      return res.status(409).json({ error: "Post is currently busy with another action." });
     }
-    if (action === "send" && sending) {
-      return res
-        .status(409)
-        .json({ error: "Another reply is being sent. Please wait." });
+
+    const campaign = getCampaigns().find((c) => c.id === post.campaign_id);
+    if (action !== "reject" && action !== "ignore" && !campaign) {
+      return res.status(409).json({ error: "This campaign does not exist." });
     }
-    const campaign = campaigns.find(
-      (c) => c.id === post.campaign_id && c.enabled,
-    );
-    if (action !== "reject" && !campaign)
-      return res
-        .status(409)
-        .json({ error: "This product is disabled or no longer exists." });
+
     if (action === "edit" || action === "send" || action === "queue") {
-      const error = replyPolicyError(req.body?.replyText, campaign!);
-      if (error) return res.status(400).json({ error });
+      const replyText = String(req.body?.replyText ?? "").trim();
+      if (!replyText) {
+        return res.status(400).json({ error: "Reply text cannot be empty." });
+      }
+      if (campaign) {
+        const error = replyPolicyError(replyText, campaign);
+        if (error) return res.status(400).json({ error });
+      }
     }
+
     busyPosts.add(id);
-    if (action === "send") sending = true;
     try {
-      if (action === "reject") {
-        updatePostStatus(id, "REJECTED");
-        return res.json({ message: "Post rejected." });
+      if (action === "reject" || action === "ignore") {
+        markPostIgnored(id);
+        updatePostStatus(id, "IGNORED");
+        return res.json({ success: true, message: "Post ignored." });
       }
-      if (action === "edit") {
-        editQueuedPost(id, req.body.replyText.trim());
-        return res.json({ post: getPost(id), message: "Draft saved." });
+
+      if (action === "edit" || action === "queue") {
+        const replyText = String(req.body.replyText).trim();
+        updatePostDraft(id, replyText);
+        return res.json({ success: true, post: getPost(id), message: "Draft saved." });
       }
-      if (action === "queue") {
-        editQueuedPost(id, req.body.replyText.trim());
+
+      if (action === "replied") {
+        markPostReplied(id, req.body?.replyId);
+        return res.json({ success: true, message: "Marked as replied." });
+      }
+
+      if (action === "send") {
+        // Human-in-the-loop: mark as replied and return the intent URL
+        if (req.body?.replyText) {
+          updatePostDraft(id, String(req.body.replyText).trim());
+        }
+        markPostReplied(id);
+        const updated = getPost(id);
         return res.json({
-          post: getPost(id),
-          message: "Reply saved and queued for scheduled posting.",
-          status: "QUEUED",
+          success: true,
+          status: "REPLIED",
+          message: "Marked as replied via Threads Web Intent.",
+          intentUrl: updated?.intent_url,
         });
       }
-      if (!campaign)
-        return res
-          .status(409)
-          .json({ error: "This campaign is disabled or no longer exists." });
+
       if (action === "regenerate") {
         const result = await generate(
           post.post_text,
           post.username,
-          campaign,
-          post.reply_text || "",
+          campaign!,
+          post.reply_text || ""
         );
         if (
           !result.isRelevant ||
-          result.confidenceScore < campaign.minConfidenceScore ||
-          replyPolicyError(result.replyText, campaign)
+          result.confidenceScore < campaign!.minConfidenceScore ||
+          replyPolicyError(result.replyText, campaign!)
         ) {
           return res.status(422).json({
-            error:
-              "AI did not produce a suitable replacement. Your existing draft is unchanged.",
+            error: "AI did not produce a suitable replacement. Your existing draft is unchanged.",
           });
         }
-        if (!editQueuedPost(id, result.replyText.trim())) {
-          return res
-            .status(409)
-            .json({ error: "Post is no longer available for editing." });
-        }
+        updatePostDraft(id, result.replyText.trim());
         return res.json({
+          success: true,
           post: getPost(id),
-          message: "New response generated. Review it before sending.",
+          message: "New response generated. Review it before opening in Threads.",
         });
       }
-      editQueuedPost(id, req.body.replyText.trim());
-      const forceLive = req.body?.live === true || req.query?.live === "true";
-      const result = await runPostingConsumerTick(campaign, id, { forceLive });
-      if (result.status !== "REPLIED" && result.status !== "DRY_RUN") {
-        return res.status(409).json({
-          error: result.error || `Cannot send: ${result.status}`,
-          status: result.status,
-        });
-      }
-      return res.json({
-        message:
-          result.status === "DRY_RUN"
-            ? "Dry run completed. Nothing was published."
-            : "Reply sent to Threads!",
-        status: result.status,
-        replyId: result.replyId,
-      });
     } catch (error) {
-      console.error("[Review action]", error);
-      return res.status(500).json({
-        error:
-          "Action failed. Your saved draft is retained. Check server logs before retrying.",
-      });
+      console.error("[Review action error]", error);
+      return res.status(500).json({ error: (error as Error).message });
     } finally {
       busyPosts.delete(id);
-      if (action === "send") sending = false;
     }
-  });
+  }
+
+  // Explicit endpoints delegate to handlePostAction for unified concurrency & behavior
+  router.post("/:id/replied", (req, res) => handlePostAction(String(req.params.id), "replied", req, res));
+  router.post("/:id/ignore", (req, res) => handlePostAction(String(req.params.id), "ignore", req, res));
+  router.post("/:id/edit", (req, res) => handlePostAction(String(req.params.id), "edit", req, res));
+  router.post("/:id/regenerate", (req, res) => handlePostAction(String(req.params.id), "regenerate", req, res));
+  router.post("/:id/:action", (req, res) => handlePostAction(String(req.params.id), String(req.params.action), req, res));
+
   return router;
 }
 
 export const reviewRouter = createReviewRouter();
-

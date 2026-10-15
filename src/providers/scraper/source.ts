@@ -45,7 +45,7 @@ export interface ThirdPartyPostPayload {
  * 
  * 3. Free Standalone Fallback:
  *    If no external scraper key/endpoint is configured, provides query-matched posts
- *    across Ukrainian and English with realistic authors and permalinks.
+ *    across Ukrainian and English with realistic authors, shortcodes, and permalinks.
  */
 export class ScraperPostSource implements PostSourceProvider {
   readonly name = "scraper";
@@ -165,6 +165,14 @@ export class ScraperPostSource implements PostSourceProvider {
         item.url ||
         item.link ||
         `https://www.threads.com/@${username}/post/${item.postCode || id}`;
+
+      const shortcodeMatch = permalink.match(/\/post\/([A-Za-z0-9_-]+)/);
+      const shortcode =
+        item.shortcode ||
+        item.postCode ||
+        item.code ||
+        (shortcodeMatch ? shortcodeMatch[1] : undefined);
+
       const timestamp =
         item.takenAtISO ||
         item.timestamp ||
@@ -175,6 +183,7 @@ export class ScraperPostSource implements PostSourceProvider {
 
       return {
         id,
+        shortcode,
         text,
         username,
         permalink,
@@ -194,6 +203,7 @@ export class ScraperPostSource implements PostSourceProvider {
       return [
         {
           id: `scraped_ua_${seed}_1`,
+          shortcode: `DeScrap${seed}1`,
           text: `Хто що порадить щодо "${keyword}"? Зранку зовсім бракує часу, хочеться щось просте, поживне і щоб не повторювати одне й те саме щодня. Поділіться ідеями!`,
           username: `foodie_olena_${seed}`,
           permalink: `https://www.threads.com/@foodie_olena_${seed}/post/DeScrap${seed}1`,
@@ -202,6 +212,7 @@ export class ScraperPostSource implements PostSourceProvider {
         },
         {
           id: `scraped_ua_${seed}_2`,
+          shortcode: `DeScrap${seed}2`,
           text: `Шукаю нові рецепти та додаток, щоб організувати ${keyword}. Вже набридло щоранку стояти біля відкритого холодильника і ламати голову.`,
           username: `kyiv_sergiy_${seed}`,
           permalink: `https://www.threads.com/@kyiv_sergiy_${seed}/post/DeScrap${seed}2`,
@@ -210,6 +221,7 @@ export class ScraperPostSource implements PostSourceProvider {
         },
         {
           id: `scraped_ua_${seed}_3`,
+          shortcode: `DeScrap${seed}3`,
           text: `Чудова погода сьогодні в парку, випили кави перед роботою ☕🌳`,
           username: `casual_user_${seed}`,
           permalink: `https://www.threads.com/@casual_user_${seed}/post/DeScrap${seed}3`,
@@ -222,6 +234,7 @@ export class ScraperPostSource implements PostSourceProvider {
     return [
       {
         id: `scraped_en_${seed}_1`,
+        shortcode: `DeScrap${seed}1`,
         text: `Really need some practical advice on "${keyword}". I'm so bored of having the same meals every single morning and need quick, healthy alternatives. Any recommendations?`,
         username: `morning_clara_${seed}`,
         permalink: `https://www.threads.com/@morning_clara_${seed}/post/DeScrap${seed}1`,
@@ -230,6 +243,7 @@ export class ScraperPostSource implements PostSourceProvider {
       },
       {
         id: `scraped_en_${seed}_2`,
+        shortcode: `DeScrap${seed}2`,
         text: `Looking for a good app or meal prep routine for ${keyword}. I only have 10 minutes before work so speed and convenience are everything right now.`,
         username: `tech_nomad_${seed}`,
         permalink: `https://www.threads.com/@tech_nomad_${seed}/post/DeScrap${seed}2`,
@@ -238,6 +252,7 @@ export class ScraperPostSource implements PostSourceProvider {
       },
       {
         id: `scraped_en_${seed}_3`,
+        shortcode: `DeScrap${seed}3`,
         text: `Weekend vibes! Finished my morning run and relaxing with my cat 🐈☀️`,
         username: `cat_lover_${seed}`,
         permalink: `https://www.threads.com/@cat_lover_${seed}/post/DeScrap${seed}3`,

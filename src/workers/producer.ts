@@ -1,10 +1,10 @@
-import { env } from "../config/env.js";
-import { campaigns } from "../config/campaigns.js";
+import { campaigns, getCampaigns } from "../config/campaigns.js";
 import {
   isPostProcessed,
   hasRepliedToUserRecently,
   saveProcessedPost,
   recordSearchLog,
+  buildThreadsReplyIntentUrl,
 } from "../db.js";
 import { getPostSourceProvider } from "../providers/factory.js";
 import { evaluatePostAndGenerateReply } from "../services/ai.js";
@@ -24,25 +24,33 @@ export interface SourcingResult {
   provider: string;
   postsFound: number;
   evaluated: number;
-  queued: number;
+  pending: number;
+  queued: number; // backward-compatibility alias for pending
   skipped: number;
+  ignored: number; // backward-compatibility alias for skipped
   duplicates: number;
 }
 
+function extractShortcode(permalink?: string | null): string | undefined {
+  if (!permalink) return undefined;
+  const match = permalink.match(/\/post\/([A-Za-z0-9_-]+)/);
+  return match ? match[1] : undefined;
+}
+
 /**
- * Sourcing Producer Loop:
+ * Sourcing Producer Loop (HITL Web Intent Pipeline):
  * 1. Iterates active campaigns
  * 2. Rotates keywords
- * 3. Uses swappable PostSourceProvider (Meta Threads API / Third-Party Scraper / Mock)
+ * 3. Uses swappable PostSourceProvider (Apify Scraper / Custom Scraper / Mock)
  * 4. Filters out sub-thread replies, stale posts, cooldown authors, excluded keywords/handles
- * 5. Runs AI relevance evaluation & reply generation
- * 6. Enforces content anti-spam policy (no links, character budget, forbidden words)
- * 7. Queues valid matches in SQLite
+ * 5. Runs AI relevance qualification & native draft generation
+ * 6. Generates 1-click Threads Web Intent URL
+ * 7. Saves candidates in SQLite with status 'PENDING'
  */
 export async function runSourcingProducerCycle(
   targetCampaignId?: string
 ): Promise<SourcingResult[]> {
-  const activeCampaigns = campaigns.filter(
+  const activeCampaigns = getCampaigns().filter(
     (c) => c.enabled && (!targetCampaignId || c.id === targetCampaignId)
   );
 
@@ -55,8 +63,10 @@ export async function runSourcingProducerCycle(
       provider: "",
       postsFound: 0,
       evaluated: 0,
+      pending: 0,
       queued: 0,
       skipped: 0,
+      ignored: 0,
       duplicates: 0,
     };
 
@@ -84,7 +94,7 @@ export async function runSourcingProducerCycle(
     campaignKeywordIndices[campaign.id] = (currentIndex + 1) % campaign.keywords.length;
     summary.keyword = keyword;
 
-    // Resolve swappable provider (Threads API / Scraper / Mock)
+    // Resolve swappable provider (Scraper / Mock / Custom)
     const sourceProvider = getPostSourceProvider(campaign);
     summary.provider = sourceProvider.name;
 
@@ -118,12 +128,14 @@ export async function runSourcingProducerCycle(
     const maxToDraft = campaign.draftsPerRun || 5;
 
     for (const post of rawPosts) {
-      if (summary.evaluated >= maxToInspect || summary.queued >= maxToDraft) {
+      if (summary.evaluated >= maxToInspect || summary.pending >= maxToDraft) {
         break;
       }
 
-      // Check 1: Already processed in SQLite
-      if (isPostProcessed(post.id)) {
+      const shortcode = post.shortcode || extractShortcode(post.permalink);
+
+      // Check 1: Deduplication by externalId (post.id) or shortcode
+      if (isPostProcessed(post.id, shortcode)) {
         summary.duplicates += 1;
         continue;
       }
@@ -133,14 +145,16 @@ export async function runSourcingProducerCycle(
         console.log(`[Producer Deduplication] Post ${post.id} is a sub-reply. Skipping.`);
         saveProcessedPost({
           post_id: post.id,
+          shortcode,
           campaign_id: campaign.id,
           username: post.username,
           post_text: post.text || "",
           permalink: post.permalink,
-          status: "SKIPPED",
+          status: "IGNORED",
           ai_reasoning: "Sub-thread comment (skipped root reply)",
         });
         summary.skipped += 1;
+        summary.ignored += 1;
         continue;
       }
 
@@ -157,14 +171,16 @@ export async function runSourcingProducerCycle(
         );
         saveProcessedPost({
           post_id: post.id,
+          shortcode,
           campaign_id: campaign.id,
           username: post.username,
           post_text: post.text || "",
           permalink: post.permalink,
-          status: "SKIPPED",
+          status: "IGNORED",
           ai_reasoning: `Author cooldown: already replied to @${post.username} in last 7 days`,
         });
         summary.skipped += 1;
+        summary.ignored += 1;
         continue;
       }
 
@@ -175,14 +191,16 @@ export async function runSourcingProducerCycle(
         );
         saveProcessedPost({
           post_id: post.id,
+          shortcode,
           campaign_id: campaign.id,
           username: post.username,
           post_text: post.text || "",
           permalink: post.permalink,
-          status: "SKIPPED",
+          status: "IGNORED",
           ai_reasoning: `Post is older than ${campaign.maxPostAgeMinutes} minutes`,
         });
         summary.skipped += 1;
+        summary.ignored += 1;
         continue;
       }
 
@@ -191,18 +209,20 @@ export async function runSourcingProducerCycle(
         console.log(`[Producer Deduplication] Post matches exclusion rule. Skipping.`);
         saveProcessedPost({
           post_id: post.id,
+          shortcode,
           campaign_id: campaign.id,
           username: post.username,
           post_text: post.text || "",
           permalink: post.permalink,
-          status: "SKIPPED",
+          status: "IGNORED",
           ai_reasoning: "Matched excluded keywords, handle, or own handle",
         });
         summary.skipped += 1;
+        summary.ignored += 1;
         continue;
       }
 
-      // AI Relevance Filter & Reply Generation
+      // AI Relevance Filter & Native Reply Draft Generation
       summary.evaluated += 1;
       console.log(
         `[Producer AI] Evaluating post from @${post.username}: "${(post.text || "").slice(0, 80)}..."`
@@ -222,30 +242,43 @@ export async function runSourcingProducerCycle(
         ) {
           saveProcessedPost({
             post_id: post.id,
+            shortcode,
             campaign_id: campaign.id,
             username: post.username,
             post_text: post.text || "",
             permalink: post.permalink,
             ai_score: aiResult.confidenceScore,
+            relevanceScore: aiResult.confidenceScore,
             ai_reasoning: aiResult.reasoning,
-            status: "SKIPPED",
+            status: "IGNORED",
           });
           summary.skipped += 1;
+          summary.ignored += 1;
         } else {
+          const intentUrl = buildThreadsReplyIntentUrl(
+            shortcode || post.permalink,
+            aiResult.replyText
+          );
+
           saveProcessedPost({
             post_id: post.id,
+            shortcode,
             campaign_id: campaign.id,
             username: post.username,
             post_text: post.text || "",
             permalink: post.permalink,
             ai_score: aiResult.confidenceScore,
+            relevanceScore: aiResult.confidenceScore,
             ai_reasoning: aiResult.reasoning,
             reply_text: aiResult.replyText,
-            status: "QUEUED",
+            aiDraftReply: aiResult.replyText,
+            intent_url: intentUrl,
+            status: "PENDING",
           });
-          summary.queued += 1;
+          summary.pending += 1;
+          summary.queued += 1; // sync alias
           console.log(
-            `📥 [Producer Queued] Post ${post.id} from @${post.username} (score: ${aiResult.confidenceScore}) queued for posting.`
+            `📥 [Producer Pending] Post ${post.id} (${shortcode || "no code"}) from @${post.username} (score: ${aiResult.confidenceScore}) drafted with Web Intent.`
           );
         }
       } catch (err) {
@@ -255,6 +288,7 @@ export async function runSourcingProducerCycle(
         );
         saveProcessedPost({
           post_id: post.id,
+          shortcode,
           campaign_id: campaign.id,
           username: post.username,
           post_text: post.text || "",
@@ -270,4 +304,3 @@ export async function runSourcingProducerCycle(
 
   return results;
 }
-

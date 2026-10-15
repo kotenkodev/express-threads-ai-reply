@@ -1,4 +1,4 @@
-import type { CampaignConfig, CampaignAccountConfig } from "./campaign.js";
+import type { CampaignConfig } from "./campaign.js";
 
 export interface PostSourceQuery {
   keyword: string;
@@ -8,11 +8,12 @@ export interface PostSourceQuery {
 }
 
 export interface PostSourceResult {
-  id: string;
-  text: string;
-  username: string;
-  permalink: string;
-  timestamp: string; // ISO 8601 string
+  id: string; // externalId
+  shortcode?: string; // unique shortcode from /post/{shortcode}
+  text: string; // content
+  username: string; // author
+  permalink: string; // url
+  timestamp: string; // postedAt
   isReply?: boolean;
   isQuotePost?: boolean;
   hasReplies?: boolean;
@@ -24,23 +25,3 @@ export interface PostSourceProvider {
   readonly name: string;
   searchPosts(query: PostSourceQuery): Promise<PostSourceResult[]>;
 }
-
-export interface PublishReplyParams {
-  targetPostId: string;
-  replyText: string;
-  campaign: CampaignConfig;
-  account?: CampaignAccountConfig;
-}
-
-export interface PublishReplyResult {
-  replyId: string;
-  status: "REPLIED" | "DRY_RUN" | "FAILED";
-  containerId?: string;
-}
-
-export interface PostPublishProvider {
-  readonly name: string;
-  publishReply(params: PublishReplyParams): Promise<PublishReplyResult>;
-  checkQuota?(account: CampaignAccountConfig): Promise<unknown>;
-}
-

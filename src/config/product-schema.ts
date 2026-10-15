@@ -24,7 +24,7 @@ export const productSchema = z.object({
     skipText: z.array(z.string()).default([]),
     skipHandles: z.array(z.string()).default([]),
     ownHandle: z.string().default(""),
-    provider: z.enum(["threads_api", "scraper", "mock"]).default("threads_api"),
+    provider: z.string().default("scraper"),
   }).strict(),
   writing: z.object({
     locale: z.string().default("match-post"),
@@ -42,7 +42,7 @@ export const productSchema = z.object({
     forbiddenWording: ["download now", "use my code", "link in bio"],
   }),
   publishing: z.object({
-    credentialVariable: z.string().regex(envVarRegex, "Must be a valid environment variable name"),
+    credentialVariable: z.string().regex(envVarRegex, "Must be a valid environment variable name").default("THREADS_ACCESS_TOKEN"),
     userId: z.string().default("me"),
     dailyBudget: z.number().int().min(0).max(1000).default(20),
     window: z.object({
@@ -64,7 +64,16 @@ export const productSchema = z.object({
       untilHour: 22,
       timeZone: "Europe/Kyiv",
     }),
-  }).strict(),
+  }).strict().default({
+    credentialVariable: "THREADS_ACCESS_TOKEN",
+    userId: "me",
+    dailyBudget: 20,
+    window: {
+      fromHour: 9,
+      untilHour: 22,
+      timeZone: "Europe/Kyiv",
+    },
+  }),
   generation: z.object({
     model: z.string().optional(),
     endpoint: z.string().url().optional(),

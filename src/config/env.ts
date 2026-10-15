@@ -41,19 +41,13 @@ export const environmentSchema = z.object({
       .optional()
   ),
   PRODUCTS_DIR: z.preprocess((val) => (val === "" ? undefined : val), z.string().trim().min(1).optional()),
-  THREADS_BOT_USERNAME: z.preprocess((val) => (val === "" ? undefined : val), z.string().trim().optional()),
-  POST_SOURCE_PROVIDER: z.enum(["threads_api", "scraper", "mock"]).default("threads_api"),
-  DB_ADAPTER: z.enum(["memory", "sqlite"]).default("memory"),
+  POST_SOURCE_PROVIDER: z.string().default("scraper"),
+  DB_ADAPTER: z.enum(["memory", "sqlite"]).default("sqlite"),
   SCRAPER_ENDPOINT: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
   SCRAPER_API_KEY: z.string().optional(),
   APIFY_TOKEN: z.string().optional(),
   APIFY_ACTOR: z.string().default("burbn~threads-search-scraper"),
   OPENAI_API_KEY: z.string().optional(),
-  THREADS_ACCESS_TOKEN: z.string().optional(),
-  THREADS_ACCESS_TOKEN_V: z.string().optional(),
-  THREADS_APP_ID: z.preprocess((val) => (val === "" || val === undefined ? undefined : String(val)), z.string().optional()),
-  THREADS_APP_SECRET: z.string().optional(),
-  REDIRECT_URI: z.string().optional(),
 }).passthrough();
 
 export type Environment = z.infer<typeof environmentSchema>;
