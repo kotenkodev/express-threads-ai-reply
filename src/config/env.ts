@@ -17,7 +17,7 @@ const environmentSchema = z.object({
   USE_MOCK_POSTS: booleanCoerce.default(false),
   PRODUCTS_DIR: z.preprocess((val) => (val === "" ? undefined : val), z.string().trim().min(1).optional()),
   POST_SOURCE_PROVIDER: z.string().default("scraper"),
-  DB_ADAPTER: z.enum(["memory", "sqlite"]).default("sqlite"),
+  DB_ADAPTER: z.enum(["memory"]).default("memory"),
   APIFY_TOKEN: z.string().optional(),
   APIFY_ACTOR: z.string().default("burbn~threads-search-scraper"),
   SCRAPER_ENDPOINT: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),

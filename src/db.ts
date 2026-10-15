@@ -6,7 +6,6 @@ import type {
 } from "./types/db.js";
 import {
   getDatabaseRepository,
-  SqliteDatabaseRepository,
 } from "./database/index.js";
 
 export * from "./types/db.js";
@@ -110,32 +109,11 @@ function deletePost(postId: string): boolean {
 }
 
 /**
- * Compatibility handle for legacy scripts or tests that invoke raw SQLite queries.
+ * Compatibility handle for database repository proxy.
  */
-const sqlite = {
-  prepare: (sqlQuery: string) => ({
-    run: (...args: unknown[]) => {
-      if (sqlQuery.includes("DELETE FROM processed_posts WHERE post_id")) {
-        const id = String(args[0]);
-        deletePost(id);
-      }
-      return { changes: 1 };
-    },
-  }),
-  pragma: () => {},
-  exec: () => {},
-  close: () => {},
-};
-
-/**
- * Compatibility handle for Drizzle ORM operations.
- */
-const db = new Proxy({}, {
+export const db = new Proxy({}, {
   get(_target, prop) {
     const repo = getDatabaseRepository();
-    if (repo instanceof SqliteDatabaseRepository) {
-      return (repo.getDrizzleHandle() as any)[prop];
-    }
     return (repo as any)[prop];
   },
 });
